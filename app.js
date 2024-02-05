@@ -8,11 +8,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const sendMessage = async (queueName, message) => {
-  const connection = await createConnection();
-  const channel = await connection.createChannel();
+  const { connection, channel } = await createConnection();
 
-  if (!connection) {
-    res.status(500).json({ error: "RabbitMQ Sunucusuna Bağlanamıyor !!!" });
+  if (!connection || !channel) {
+    await createConnection();
   }
 
   await channel.assertQueue(queueName, { durable: true });
@@ -32,15 +31,17 @@ const sendMessage = async (queueName, message) => {
 app.post("/api/send-message", async (req, res) => {
   const { queue, message } = req.body;
 
-  const data = {
-    queue,
-    message,
-    date: new Date(),
-  };
+  for (let index = 0; index < 10000; index++) {
+    const data = {
+      queue,
+      message: `Message ${index + 1}`,
+      date: new Date(),
+    };
 
-  await sendMessage(queue, JSON.stringify(data));
+    await sendMessage(queue, JSON.stringify(data));
+  }
 
-  res.status(200).json({ data });
+  res.status(200).json({ success: true });
 });
 
 const port = 3005;
